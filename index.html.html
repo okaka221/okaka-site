@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OKAKA — 映像クリエイター / カメラマン</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #080808;
+    --white: #f0ece4;
+    --accent: #e8c96a;
+    --accent2: #c94f2a;
+    --gray: #1a1a1a;
+    --muted: #555;
+    --border: rgba(240,236,228,0.12);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  /* ─── NOISE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.6;
+  }
+
+  /* ─── CUSTOM CURSOR ─── */
+  .cursor {
+    position: fixed;
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10000;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s, width 0.3s, height 0.3s, background 0.3s;
+    mix-blend-mode: difference;
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 36px; height: 36px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.18s ease-out, width 0.3s, height 0.3s, opacity 0.3s;
+    opacity: 0.5;
+  }
+
+  /* ─── HEADER / HERO ─── */
+  header {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 4rem 5vw 5rem;
+    overflow: hidden;
+  }
+
+  .header-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 70% 30%, #1a0a02 0%, transparent 70%),
+                radial-gradient(ellipse 50% 40% at 20% 80%, #0a0d14 0%, transparent 70%),
+                var(--black);
+  }
+
+  .header-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+  }
+
+  .header-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.3s forwards;
+  }
+
+  .hero-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(6rem, 18vw, 18rem);
+    line-height: 0.85;
+    letter-spacing: -0.02em;
+    color: var(--white);
+    position: relative;
+    opacity: 0;
+    animation: fadeUp 1s 0.5s forwards;
+  }
+  .hero-name span {
+    display: block;
+    color: var(--accent);
+    font-size: clamp(3rem, 8vw, 8rem);
+    letter-spacing: 0.1em;
+  }
+
+  .hero-sub {
+    margin-top: 2.5rem;
+    font-size: clamp(0.85rem, 1.5vw, 1.05rem);
+    color: rgba(240,236,228,0.5);
+    letter-spacing: 0.15em;
+    max-width: 420px;
+    line-height: 2;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.9s forwards;
+  }
+
+  .hero-scroll {
+    position: absolute;
+    right: 5vw;
+    bottom: 5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    opacity: 0;
+    animation: fadeUp 0.8s 1.2s forwards;
+  }
+  .hero-scroll::after {
+    content: '';
+    display: block;
+    width: 1px;
+    height: 60px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    animation: scrollLine 2s 1.5s ease-in-out infinite;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 1.5rem 5vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    mix-blend-mode: normal;
+    backdrop-filter: blur(0px);
+    transition: backdrop-filter 0.4s, background 0.4s;
+  }
+  nav.scrolled {
+    backdrop-filter: blur(16px);
+    background: rgba(8,8,8,0.7);
+  }
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.1em;
+    color: var(--white);
+    text-decoration: none;
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: rgba(240,236,228,0.5);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.3s;
+    position: relative;
+  }
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -3px; left: 0;
+    width: 0; height: 1px;
+    background: var(--accent);
+    transition: width 0.3s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+  .nav-links a:hover::after { width: 100%; }
+
+  /* ─── SECTIONS ─── */
+  section {
+    padding: 8rem 5vw;
+    position: relative;
+  }
+
+  .section-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 3rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .section-tag::before {
+    content: '';
+    display: inline-block;
+    width: 30px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 7vw, 6rem);
+    letter-spacing: 0.02em;
+    line-height: 1;
+    margin-bottom: 3rem;
+  }
+
+  /* ─── EQUIPMENT ─── */
+  #equipment {
+    background: var(--gray);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .equip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-top: 3rem;
+  }
+  .equip-item {
+    background: var(--gray);
+    padding: 2rem;
+    transition: background 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .equip-item::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 0; height: 2px;
+    background: var(--accent);
+    transition: width 0.4s;
+  }
+  .equip-item:hover { background: #222; }
+  .equip-item:hover::before { width: 100%; }
+  .equip-cat {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .equip-name {
+    font-size: 0.9rem;
+    color: var(--white);
+    line-height: 1.8;
+    font-weight: 300;
+  }
+
+  /* ─── PRICING ─── */
+  #pricing {
+    background: var(--black);
+  }
+  .price-category {
+    margin-bottom: 5rem;
+  }
+  .price-cat-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.1em;
+    color: var(--white);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  .price-cat-title .emoji { font-size: 1.6rem; }
+
+  /* カード型レイアウト */
+  .price-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+  .price-card {
+    background: #111;
+    padding: 1.6rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.8rem;
+    transition: background 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+  .price-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 0;
+    background: var(--accent);
+    transition: height 0.3s;
+  }
+  .price-card:hover { background: #181818; }
+  .price-card:hover::after { height: 100%; }
+
+  .price-card-label {
+    font-size: 0.95rem;
+    color: var(--white);
+    font-weight: 400;
+    line-height: 1.5;
+  }
+  .price-card-sub {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+    font-family: 'Space Mono', monospace;
+  }
+  .price-amount {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .price-amount small {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(232,201,106,0.6);
+    margin-left: 0.2em;
+  }
+
+  /* 注釈 */
+  .price-notes {
+    background: #0e0e0e;
+    border-left: 2px solid var(--accent2);
+    padding: 1.2rem 1.5rem;
+  }
+  .price-notes p {
+    font-size: 0.78rem;
+    color: rgba(240,236,228,0.45);
+    line-height: 1.9;
+    font-family: 'Space Mono', monospace;
+  }
+  .price-notes p + p { margin-top: 0.3rem; }
+  .price-notes p::before { content: '※ '; color: var(--accent2); }
+
+  /* ─── SNS ─── */
+  #sns {
+    background: var(--gray);
+    border-top: 1px solid var(--border);
+  }
+  .sns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-top: 3rem;
+  }
+  .sns-card {
+    border: 1px solid var(--border);
+    padding: 2.5rem 2rem;
+    text-decoration: none;
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: border-color 0.3s, transform 0.3s, background 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .sns-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.7,0,0.3,1);
+    z-index: 0;
+  }
+  .sns-card:hover::before { transform: translateY(0); }
+  .sns-card:hover { color: var(--black); border-color: var(--accent); }
+  .sns-card > * { position: relative; z-index: 1; }
+  .sns-platform {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.1em;
+  }
+  .sns-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .sns-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    border: 1px solid currentColor;
+    padding: 0.2rem 0.6rem;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+  }
+  .sns-card:hover .sns-tag { opacity: 0.8; }
+
+  /* ─── CONTACT ─── */
+  #contact {
+    background: var(--black);
+    border-top: 1px solid var(--border);
+    text-align: center;
+    padding: 10rem 5vw;
+  }
+  .contact-big {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3.5rem, 10vw, 9rem);
+    line-height: 1;
+    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, var(--white) 40%, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 2rem;
+  }
+  .contact-sub {
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    margin-bottom: 3rem;
+    font-family: 'Space Mono', monospace;
+  }
+  .contact-btn {
+    display: inline-block;
+    padding: 1.2rem 3.5rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    text-decoration: none;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    transition: background 0.3s, color 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .contact-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.7,0,0.3,1);
+    z-index: 0;
+  }
+  .contact-btn:hover::before { transform: scaleX(1); }
+  .contact-btn:hover { color: var(--black); }
+  .contact-btn span { position: relative; z-index: 1; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    background: var(--black);
+    border-top: 1px solid var(--border);
+    padding: 2rem 5vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  footer p {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+  }
+
+  /* ─── DIVIDER ─── */
+  .marquee-strip {
+    overflow: hidden;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 0.8rem 0;
+    background: var(--accent);
+  }
+  .marquee-inner {
+    display: flex;
+    gap: 3rem;
+    white-space: nowrap;
+    animation: marquee 20s linear infinite;
+  }
+  .marquee-inner span {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.3em;
+    color: var(--black);
+    flex-shrink: 0;
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scrollLine {
+    0%   { transform: scaleY(0); transform-origin: top; opacity: 1; }
+    50%  { transform: scaleY(1); transform-origin: top; opacity: 1; }
+    51%  { transform: scaleY(1); transform-origin: bottom; }
+    100% { transform: scaleY(0); transform-origin: bottom; opacity: 0; }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  /* ─── FADE-IN ON SCROLL ─── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.8s, transform 0.8s;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 640px) {
+    .nav-links { display: none; }
+    .price-table td:first-child { width: auto; }
+    footer { justify-content: center; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- NAV -->
+<nav id="mainNav">
+  <a href="#" class="nav-logo">OKAKA<span>.</span></a>
+  <ul class="nav-links">
+    <li><a href="#equipment">機材</a></li>
+    <li><a href="#pricing">料金表</a></li>
+    <li><a href="#sns">SNS</a></li>
+    <li><a href="#contact">お問い合わせ</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<header>
+  <div class="header-bg"></div>
+  <div class="header-grid"></div>
+
+  <p class="header-label">映像クリエイター &nbsp;/&nbsp; カメラマン</p>
+  <h1 class="hero-name">
+    OKAKA
+    <span>Creator</span>
+  </h1>
+  <p class="hero-sub">写真・映像の力で、あなたの瞬間を永遠に。<br>イベント・個人・映像編集、何でもご相談ください。</p>
+
+  <div class="hero-scroll">Scroll</div>
+</header>
+
+<!-- MARQUEE -->
+<div class="marquee-strip">
+  <div class="marquee-inner">
+    <span>PHOTO</span><span>×</span>
+    <span>VIDEO</span><span>×</span>
+    <span>EDITING</span><span>×</span>
+    <span>SONY α7Ⅲ</span><span>×</span>
+    <span>PREMIERE PRO</span><span>×</span>
+    <span>AFTER EFFECTS</span><span>×</span>
+    <span>FINAL CUT PRO</span><span>×</span>
+    <span>PHOTO</span><span>×</span>
+    <span>VIDEO</span><span>×</span>
+    <span>EDITING</span><span>×</span>
+    <span>SONY α7Ⅲ</span><span>×</span>
+    <span>PREMIERE PRO</span><span>×</span>
+    <span>AFTER EFFECTS</span><span>×</span>
+    <span>FINAL CUT PRO</span><span>×</span>
+  </div>
+</div>
+
+<!-- EQUIPMENT -->
+<section id="equipment">
+  <div class="section-tag">使用機材</div>
+  <h2 class="section-title reveal">EQUIPMENT</h2>
+  <div class="equip-grid">
+    <div class="equip-item reveal">
+      <p class="equip-cat">Camera Body</p>
+      <p class="equip-name">SONY α7Ⅲ</p>
+    </div>
+    <div class="equip-item reveal">
+      <p class="equip-cat">Lens</p>
+      <p class="equip-name">
+        SONY FE 85mm F1.8<br>
+        TAMRON 28-200mm F2.8-5.6 Di III RXD<br>
+        SIGMA Contemporary 100-400mm F5-6.3 DG DN OS
+      </p>
+    </div>
+    <div class="equip-item reveal">
+      <p class="equip-cat">Software</p>
+      <p class="equip-name">
+        Adobe Premiere Pro<br>
+        Adobe After Effects<br>
+        Final Cut Pro
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="section-tag">料金表</div>
+  <h2 class="section-title reveal">PRICE LIST</h2>
+
+  <!-- 写真 -->
+  <div class="price-category reveal">
+    <h3 class="price-cat-title"><span class="emoji">📸</span> 写真・カメラ撮影</h3>
+    <div class="price-cards">
+      <div class="price-card">
+        <div>
+          <div class="price-card-label">イベント（一部制）</div>
+          <div class="price-card-sub">3〜4時間</div>
+        </div>
+        <div class="price-amount">¥6,000<small>〜</small></div>
+      </div>
+      <div class="price-card">
+        <div>
+          <div class="price-card-label">イベント（二部制）</div>
+          <div class="price-card-sub">5〜8時間</div>
+        </div>
+        <div class="price-amount">¥10,000<small>〜</small></div>
+      </div>
+      <div class="price-card">
+        <div>
+          <div class="price-card-label">個人撮影</div>
+          <div class="price-card-sub">3〜8時間 / 要相談</div>
+        </div>
+        <div class="price-amount">¥3,000<small>〜</small></div>
+      </div>
+      <div class="price-card">
+        <div>
+          <div class="price-card-label">チェキスタのみ</div>
+        </div>
+        <div class="price-amount">¥1,500</div>
+      </div>
+    </div>
+    <div class="price-notes">
+      <p>一部制でも二部制に近い時間の場合は二部制料金を適用します</p>
+      <p>交通費は別途いただきます</p>
+    </div>
+  </div>
+
+  <!-- 映像 -->
+  <div class="price-category reveal">
+    <h3 class="price-cat-title"><span class="emoji">🎬</span> 映像編集</h3>
+    <div class="price-cards">
+      <div class="price-card">
+        <div>
+          <div class="price-card-label">ショート動画</div>
+          <div class="price-card-sub">30秒</div>
+        </div>
+        <div class="price-amount">¥1,500</div>
+      </div>
+      <div class="price-card">
+        <div>
+          <div class="price-card-label">ショート動画</div>
+          <div class="price-card-sub">60秒</div>
+        </div>
+        <div class="price-amount">¥2,500</div>
+      </div>
+      <div class="price-card">
+        <div>
+          <div class="price-card-label">動画</div>
+          <div class="price-card-sub">1〜5分</div>
+        </div>
+        <div class="price-amount">¥3,000</div>
+      </div>
+      <div class="price-card">
+        <div>
+          <div class="price-card-label">動画</div>
+          <div class="price-card-sub">5〜10分</div>
+        </div>
+        <div class="price-amount">¥6,000</div>
+      </div>
+      <div class="price-card">
+        <div>
+          <div class="price-card-label">動画</div>
+          <div class="price-card-sub">10分以上</div>
+        </div>
+        <div class="price-amount">¥7,000<small>〜</small></div>
+      </div>
+    </div>
+    <div class="price-notes">
+      <p>映像編集は実写動画がメインです。アニメーションは場合によって対応できないことがあります</p>
+      <p>料金は動画内容全体により変動します</p>
+      <p>納期1週間前の場合は特急料 +¥2,000</p>
+      <p>その他ご依頼は要相談。DMよりお気軽にお問い合わせください</p>
+    </div>
+  </div>
+</section>
+
+<!-- SNS MARQUEE -->
+<div class="marquee-strip">
+  <div class="marquee-inner" style="animation-direction:reverse;">
+    <span>INSTAGRAM</span><span>—</span>
+    <span>OUTDOOR</span><span>—</span>
+    <span>HOBBY</span><span>—</span>
+    <span>COSPLAY</span><span>—</span>
+    <span>PERSONAL</span><span>—</span>
+    <span>TWITTER</span><span>—</span>
+    <span>INSTAGRAM</span><span>—</span>
+    <span>OUTDOOR</span><span>—</span>
+    <span>HOBBY</span><span>—</span>
+    <span>COSPLAY</span><span>—</span>
+    <span>PERSONAL</span><span>—</span>
+    <span>TWITTER</span><span>—</span>
+  </div>
+</div>
+
+<!-- SNS -->
+<section id="sns">
+  <div class="section-tag">SNS</div>
+  <h2 class="section-title reveal">FOLLOW ME</h2>
+  <div class="sns-grid">
+    <a href="https://www.instagram.com/okaka_zc33s/?hl=ja" target="_blank" class="sns-card reveal">
+      <p class="sns-platform">Instagram</p>
+      <div class="sns-tags">
+        <span class="sns-tag">アウトドア</span>
+        <span class="sns-tag">趣味</span>
+        <span class="sns-tag">コスプレイヤー</span>
+        <span class="sns-tag">個人</span>
+      </div>
+    </a>
+    <a href="https://x.com/okaka221" target="_blank" class="sns-card reveal">
+      <p class="sns-platform">Twitter / X</p>
+      <div class="sns-tags">
+        <span class="sns-tag">個人</span>
+      </div>
+    </a>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <h2 class="contact-big reveal">LET'S<br>CREATE</h2>
+  <p class="contact-sub reveal">お仕事・お問い合わせはDMにて</p>
+  <a href="https://x.com/okaka221" target="_blank" class="contact-btn reveal">
+    <span>DM で問い合わせる →</span>
+  </a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>© 2025 OKAKA — 映像クリエイター / カメラマン</p>
+  <p>All Rights Reserved</p>
+</footer>
+
+<script>
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursorRing');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  (function animate() {
+    rx += (mx - rx) * 0.15;
+    ry += (my - ry) * 0.15;
+    cursor.style.left = mx + 'px';
+    cursor.style.top  = my + 'px';
+    ring.style.left   = rx + 'px';
+    ring.style.top    = ry + 'px';
+    requestAnimationFrame(animate);
+  })();
+
+  // Nav scroll
+  const nav = document.getElementById('mainNav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 80);
+  });
+
+  // Reveal on scroll
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
