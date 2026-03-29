@@ -561,7 +561,6 @@
 
   /* ─── RESPONSIVE ─── */
   @media (max-width: 640px) {
-    .nav-links { display: none; }
     .price-table td:first-child { width: auto; }
     footer { justify-content: center; text-align: center; }
   }
@@ -688,6 +687,48 @@
   }
   .lightbox-close:hover { opacity: 1; }
 
+
+  /* ─── HAMBURGER MENU ─── */
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    padding: 4px;
+    z-index: 200;
+  }
+  .hamburger span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--white);
+    transition: all 0.3s;
+  }
+  .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; }
+  .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  @media (max-width: 640px) {
+    .hamburger { display: flex; }
+    .nav-links {
+      display: flex !important;
+      flex-direction: column;
+      position: fixed;
+      top: 0; right: -100%;
+      width: 70vw;
+      height: 100vh;
+      background: rgba(8,8,8,0.97);
+      backdrop-filter: blur(16px);
+      padding: 6rem 2rem 2rem;
+      gap: 2rem;
+      transition: right 0.3s ease;
+      z-index: 150;
+      border-left: 1px solid var(--border);
+    }
+    .nav-links.open { right: 0; }
+    .nav-links a { font-size: 1rem; }
+  }
+
 </style>
 </head>
 <body>
@@ -715,7 +756,8 @@
 
 <nav id="mainNav">
   <a href="#" class="nav-logo">OKAKA<span>.</span></a>
-  <ul class="nav-links">
+  <button class="hamburger" id="hamburger" aria-label="メニュー"><span></span><span></span><span></span></button>
+  <ul class="nav-links" id="navLinks">
     <li><a href="#equipment">機材</a></li>
     <li><a href="#pricing">料金表</a></li>
     <li><a href="#sns">SNS</a></li>
@@ -1019,6 +1061,21 @@
     el.addEventListener('mouseenter', () => {
       hoverSE.currentTime = 0;
       hoverSE.play();
+    });
+  });
+
+
+  // Hamburger menu
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('open');
+    navLinks.classList.toggle('open');
+  });
+  navLinks.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      hamburger.classList.remove('open');
+      navLinks.classList.remove('open');
     });
   });
 
